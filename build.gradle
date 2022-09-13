@@ -1,22 +1,103 @@
 plugins {
 	id 'org.springframework.boot' version '2.7.3'
 	id 'io.spring.dependency-management' version '1.0.13.RELEASE'
+	id "org.openapi.generator" version "6.1.0"
 	id 'java'
 }
-
+sourceSets {
+	main {
+		java {
+			srcDir "${buildDir}/openapiDir/generated/src/main/java/"
+		}
+	}
+}
 group = 'com.volushkova.apifirst'
 version = '0.0.1-SNAPSHOT'
 sourceCompatibility = '17'
 
 repositories {
 	mavenCentral()
+	maven {
+		url "http://localhost:8081/repository/apifirst-snapshot/"
+		allowInsecureProtocol = true
+	}
+}
+
+configurations {
+	openApiYaml { transitive = false }
 }
 
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+	implementation group: 'org.springdoc', name: 'springdoc-openapi-ui', version: '1.6.11'
+	openApiYaml 'com.volushkova.apifirst:ApiFirstMock:0.0.1-SNAPSHOT'
+	openApiYaml 'com.volushkova.apifirst:ApiFirstMockClient:0.0.1-SNAPSHOT'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.cloud:spring-cloud-dependencies:2021.0.4"
+	}
 }
 
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+task unzip(type: Copy) {
+	configurations.openApiYaml.collect { dependency ->
+		from(zipTree(dependency)) {
+			into "/"
+		}
+	}
+    into "$buildDir/openapiDir"
+}
+
+import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
+tasks.register("petstoreClient", GenerateTask) {
+	generatorName = "spring"
+	outputDir = "${buildDir}/openapiDir/generated".toString()
+	inputSpec = "${buildDir}/openapiDir/petstore.yaml".toString()
+	globalProperties = [
+			apis: "",
+			models: "",
+			supportingFiles: ""
+	]
+	apiPackage = "com.volushkova.apifirst.generated.petclient"
+	modelPackage = "com.volushkova.apifirst.generated.petclient.model"
+	skipOverwrite = true
+	configOptions = [
+			dateLibrary: "java8",
+			openApiNullable: "false",
+			generateSupportingFiles: "true",
+			library: "spring-cloud"
+	]
+
+}
+
+tasks.register("server", GenerateTask) {
+	generatorName = "spring"
+	outputDir = "${buildDir}/openapiDir/generated".toString()
+	inputSpec = "${buildDir}/openapiDir/server.yaml".toString()
+	globalProperties = [
+			apis: "",
+			models: "",
+			supportingFiles: 'ApiUtil.java'
+	]
+	apiPackage = "com.volushkova.apifirst.generated.server"
+	modelPackage = "com.volushkova.apifirst.generated.server.model"
+	skipOverwrite = true
+	configOptions = [
+			dateLibrary: "java8",
+			interfaceOnly: "true",
+			skipDefaultInterface: "false",
+			openApiNullable: "false",
+			generateSupportingFiles: "true"
+	]
+}
+
+project.tasks.petstoreClient.dependsOn(unzip)
+project.tasks.server.dependsOn(unzip)
+project.tasks.compileJava.dependsOn('petstoreClient', 'server')
