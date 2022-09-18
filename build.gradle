@@ -1,7 +1,7 @@
 plugins {
 	id 'org.springframework.boot' version '2.7.3'
 	id 'io.spring.dependency-management' version '1.0.13.RELEASE'
-	id "org.openapi.generator" version "6.1.0"
+	id "org.openapi.generator" version "5.4.0"
 	id 'java'
 }
 sourceSets {
@@ -63,7 +63,7 @@ tasks.register("petstoreClient", GenerateTask) {
 	globalProperties = [
 			apis: "",
 			models: "",
-			supportingFiles: ""
+			supportingFiles: "ClientConfiguration.java"
 	]
 	apiPackage = "com.volushkova.apifirst.generated.petclient"
 	modelPackage = "com.volushkova.apifirst.generated.petclient.model"
@@ -71,7 +71,6 @@ tasks.register("petstoreClient", GenerateTask) {
 	configOptions = [
 			dateLibrary: "java8",
 			openApiNullable: "false",
-			generateSupportingFiles: "true",
 			library: "spring-cloud"
 	]
 
